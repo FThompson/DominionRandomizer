@@ -11,11 +11,13 @@ class Card:
         self.cost = cost
         self.text = text
         self.in_supply = self.category == 'Card' and 'This is not in the Supply' not in self.text
+        self.encoded_name = self.name.replace(' ', '_').replace("'", '%27')
 
     @classmethod
     def from_json(cls, **json):
         props = dict(json)
         props.pop('in_supply')
+        props.pop('encoded_name')
         props['cost'] = Cost(**props['cost'])
         return cls(**props)
 
