@@ -8,15 +8,19 @@ This program automates the card randomizer process by picking 10 cards from the 
 
 ### Output ###
 
-    Mine (Card), Base, (Action), Cost(5C, 0P, 0D)
-    Venture (Card), Prosperity, (Treasure), Cost(5C, 0P, 0D)
-    Conspirator (Card), Intrigue, (Action), Cost(4C, 0P, 0D)
-    Lurker (Card), Intrigue 2E, (Action), Cost(2C, 0P, 0D)
-    Trading Post (Card), Intrigue, (Action), Cost(5C, 0P, 0D)
-    Steward (Card), Intrigue, (Action), Cost(3C, 0P, 0D)
-    Lookout (Card), Seaside, (Action), Cost(3C, 0P, 0D)
-    Fishing Village (Card), Seaside, (Action, Duration), Cost(3C, 0P, 0D)
-    Chapel (Card), Base, (Action), Cost(2C, 0P, 0D)
-    Masquerade (Card), Intrigue, (Action), Cost(3C, 0P, 0D)
+    Base
+    - Cellar (Action), Base, Cost(2C, 0P, 0D)
+    - Chancellor (Action), Base, Cost(3C, 0P, 0D)
+    - Market (Action), Base, Cost(5C, 0P, 0D)
+    Intrigue
+    - Diplomat (Action, Reaction), Intrigue, Cost(4C, 0P, 0D)
+    - Mill (Action, Victory), Intrigue, Cost(4C, 0P, 0D)
+    - Replace (Action, Attack), Intrigue, Cost(5C, 0P, 0D)
+    Prosperity
+    - City (Action), Prosperity, Cost(5C, 0P, 0D)
+    - Goons (Action, Attack), Prosperity, Cost(6C, 0P, 0D)
+    Seaside
+    - Caravan (Action, Duration), Seaside, Cost(4C, 0P, 0D)
+    - Ghost Ship (Action, Attack), Seaside, Cost(5C, 0P, 0D)
 
 Currently does not handle individual Promo cards or support randomizing landscape-oriented cards.

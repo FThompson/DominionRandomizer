@@ -1,7 +1,7 @@
 import argparse
 import json
-
 import random
+from collections import defaultdict
 from dtypes import BasicCard, Card, GameSet
 
 
@@ -16,9 +16,14 @@ def randomize():
         all_cards = [Card.from_json(**d) for d in data]
         possible_cards = [c for c in all_cards if can_pick_card(c) and is_card_in_args(c, args.sets)]
         cards = random.sample(possible_cards, 10)
-        cards.sort(key=lambda c: (c.game_set, c.name))
+        card_sets = defaultdict(list)
         for card in cards:
-            print('- %s (%s), %s, %s' % (card.name, ', '.join(card.types), card.game_set, card.cost))
+            card_sets[card.game_set].append(card)
+        for game_set in sorted(card_sets.keys()):
+            print(game_set)
+            card_sets[game_set].sort(key=lambda c: c.name)
+            for card in card_sets[game_set]:
+                print('- %s (%s), %s, %s' % (card.name, ', '.join(card.types), card.game_set, card.cost))
 
 
 def is_card_in_args(card, sets):
