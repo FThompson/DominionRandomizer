@@ -1,33 +1,38 @@
-from dtypes import Card, Cost
-
-import re
-import requests
+import argparse
 import json
 import urllib.request
+from argparse import ArgumentParser
 from pathlib import Path
+
+import requests
 from bs4 import BeautifulSoup
+
+import re
+from dtypes import Card, Cost
 
 
 class CardFetcher:
-    def fetch_cards(self):
+    def fetch_cards(self, fetch_images=False):
         cards = []
         response = requests.get('http://wiki.dominionstrategy.com/index.php/List_of_cards?action=raw')
         raw_cards = response.content.decode('utf-8').split('\n|-\n')
         for raw_card in raw_cards[1:]:
             card = self.parse_card_data(raw_card)
-            self.fetch_card_image(card)
+            if fetch_images:
+                self.fetch_card_image(card)
             cards.append(card)
         self.cards = cards
 
     def fetch_card_image(self, card):
-        response = requests.get('http://wiki.dominionstrategy.com/index.php/File:%s.jpg' % card.encoded_name)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        image_url = 'http://wiki.dominionstrategy.com/' + soup.select_one('#file a').get('href')
-        temp_path, headers = urllib.request.urlretrieve(image_url)
         filepath = Path('res') / 'cards' / (card.encoded_name + '.jpg')
-        if not filepath.parent.exists():
-            filepath.parent.mkdir()
-        Path(temp_path).rename(filepath)
+        if not filepath.exists():
+            response = requests.get('http://wiki.dominionstrategy.com/index.php/File:%s.jpg' % card.encoded_name)
+            soup = BeautifulSoup(response.content, 'html.parser')
+            image_url = 'http://wiki.dominionstrategy.com/' + soup.select_one('#file a').get('href')
+            temp_path, headers = urllib.request.urlretrieve(image_url)
+            if not filepath.parent.exists():
+                filepath.parent.mkdir()
+            Path(temp_path).rename(filepath)
 
     def parse_card_data(self, raw_card):
         raw = re.split(r'\D\|\|\D', raw_card)
@@ -59,8 +64,11 @@ class CardFetcher:
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--images', action='store_true')
+    args = parser.parse_args()
     fetcher = CardFetcher()
-    fetcher.fetch_cards()
+    fetcher.fetch_cards(args.images)
     for card in fetcher.cards:
         print(card)
     with open('res/cards.json', 'w') as f:
