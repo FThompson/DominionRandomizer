@@ -32,11 +32,11 @@ class CardFetcher:
     def parse_card_data(self, raw_card):
         raw = re.split(r'\D\|\|\D', raw_card)
         name, category = self.get_name_and_category(raw[0])
-        game_set = self.get_game_set(raw[1])
+        game_set, edition = self.get_game_set(raw[1])
         types = self.get_types(raw[2])
         cost = self.get_cost(raw[3])
         text = raw[4].strip()
-        return Card(name, category, types, game_set, cost, text)
+        return Card(name, category, types, game_set, edition, cost, text)
 
     def get_name_and_category(self, raw):
         m = re.match(r'\|\{\{(.*?)\|(.*?)\}\}', raw)
@@ -48,9 +48,7 @@ class CardFetcher:
         m = re.match(r'\[\[(.*?)\]\](, <abbr.+>([12]E)<)?', raw)
         game_set = m.group(1)
         edition = m.group(3)
-        if edition:
-            game_set += ' ' + edition
-        return game_set
+        return game_set, edition
 
     def get_types(self, raw):
         return [x.strip() for x in raw.split('-')]

@@ -3,11 +3,12 @@ from enum import Enum
 
 
 class Card:
-    def __init__(self, name, category, types, game_set, cost, text):
+    def __init__(self, name, category, types, game_set, edition, cost, text):
         self.name = name
         self.category = category
         self.types = types
         self.game_set = game_set
+        self.edition = edition
         self.cost = cost
         self.text = text
         self.in_supply = self.category == 'Card' and 'This is not in the Supply' not in self.text
@@ -22,7 +23,10 @@ class Card:
         return cls(**props)
 
     def __str__(self):
-        return '%s (%s), %s, (%s), %s' % (self.name, self.category, self.game_set, ', '.join(self.types), self.cost)
+        set_name = self.game_set
+        if self.edition:
+            set_name += ' ' + self.edition
+        return '%s (%s), %s, (%s), %s' % (self.name, self.category, set_name, ', '.join(self.types), self.cost)
 
 
 class Cost:
