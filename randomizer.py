@@ -1,6 +1,7 @@
 import argparse
 import json
 import random
+import numpy
 from collections import defaultdict
 from dtypes import BasicCard, Card, GameSet
 
@@ -33,8 +34,10 @@ def randomize():
         if distribution:
             set_distributions = {args.sets[i]: distribution[i] for i in range(len(args.sets))}
         if args.weights:
-            all_distributions = [get_distribution(set_distributions, card) for card in possible_cards]
-            cards = random.choices(possible_cards, weights=all_distributions, k=10)
+            all_distributions = numpy.array([get_distribution(set_distributions, card) for card in possible_cards])
+            weight_sum = all_distributions.sum()
+            normalized_distributions = [i / weight_sum for i in all_distributions]
+            cards = numpy.random.choice(possible_cards, size=10, replace=False, p=normalized_distributions)
         elif args.counts:
             cards = []
             possible_card_sets = defaultdict(list)
