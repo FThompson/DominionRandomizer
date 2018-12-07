@@ -76,6 +76,9 @@ class GameSet(Enum):
     RENAISSANCE = 15
     PROMO = 0
 
+    def get_arg_form(self):
+        return self.name.lower().replace('_', '')
+
 
 class CardCategory(Enum):
     CARD = 0
