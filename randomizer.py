@@ -5,6 +5,7 @@ import numpy
 from collections import defaultdict
 from dtypes import BasicCard, Card, GameSet
 
+
 def randomize():
     parser = argparse.ArgumentParser()
     game_choices = [g.get_arg_form() for g in GameSet]
@@ -13,9 +14,9 @@ def randomize():
     distribution_group = parser.add_mutually_exclusive_group()
     distribution_group.add_argument('-w', '--weights', nargs='+', type=float)
     distribution_group.add_argument('-c', '--counts', nargs='+', type=int)
-    parser.add_argument('-i', '--include', nargs='+')
+    parser.add_argument('-i', '--include', nargs='+', type=standardize_input)
+    parser.add_argument('-x', '--exclude', nargs='+', type=standardize_input)
     args = parser.parse_args()
-    # TODO: --include, --exclude, --filter_types
     # TODO: refactor
     if 'base1e' in args.sets and 'base2e' in args.sets:
         parser.error('must choose only one of base1e, base2e')
@@ -27,24 +28,34 @@ def randomize():
         parser.error('must have equal quantities of sets (%d) and counts (%d)' % (len(args.sets), len(args.counts)))
     if args.counts and sum(args.counts) != 10:
         parser.error('counts must add up to 10')
-    if len(args.include) > 10:
+    if args.include and len(args.include) > 10:
         parser.error('cannot have greater than ten cards defined via -i/--include')
     with open('res/cards.json') as f:
         data = json.load(f)
         all_cards = [Card.from_json(**d) for d in data]
         possible_cards = [c for c in all_cards if can_pick_card(c) and is_card_in_args(c, args.sets)]
         cards = []
-        for include in args.include:
-            to_compare = include.replace("'", '').replace(' ', '').lower()
-            found = False
-            for card in possible_cards:
-                if to_compare == card.name.replace("'", '').replace(' ', '').lower():
-                    cards.append(card)
-                    possible_cards.remove(card)
-                    found = True
-            if not found:
-                parser.error('unable to find card specified via -i/--include: %s' % include)
-        count_to_pick = 10 - len(args.include)
+        # TODO: easy refactor
+        if args.include:
+            for include in args.include:
+                found = False
+                for card in possible_cards:
+                    if include == standardize_input(card.name):
+                        cards.append(card)
+                        possible_cards.remove(card)
+                        found = True
+                if not found:
+                    parser.error('unable to find card specified via -i/--include: %s' % include)
+        if args.exclude:
+            for exclude in args.exclude:
+                found = False
+                for card in possible_cards:
+                    if exclude == standardize_input(card.name):
+                        possible_cards.remove(card)
+                        found = True
+                if not found:
+                    parser.error('unable to find card specified via -x/--exclude: %s' % exclude)
+        count_to_pick = 10 - (len(args.include) if args.include else 0)
         distribution = args.weights or args.counts
         if distribution:
             set_distributions = {args.sets[i]: distribution[i] for i in range(len(args.sets))}
@@ -59,7 +70,7 @@ def randomize():
             for card in possible_cards:
                 possible_card_sets[card.game_set].append(card)
             for card in cards:
-                card_set = card.game_set.replace(' ', '').lower()
+                card_set = standardize_input(card.game_set)
                 for game_set, distribution in set_distributions.items():
                     if game_set.startswith(card_set):
                         set_distributions[game_set] -= 1  # TODO: serious refactor needed this is bad dup code
@@ -79,6 +90,10 @@ def randomize():
                 print('- %s (%s), %s' % (card.name, ', '.join(card.types), card.cost))
 
 
+def standardize_input(string):
+    return string.replace("'", '').replace(' ', '').lower()
+
+
 # TODO: custom dict with startswith get
 # TODO: refactor these functions, maybe with added GameSet functionality
 def get_distribution(distributions, card):
@@ -91,7 +106,7 @@ def get_distribution(distributions, card):
 
 # TODO: refactor these functions
 def get_set_distribution(distributions, game_set):
-    game_set_name = game_set.replace(' ', '').lower()
+    game_set_name = standardize_input(game_set)
     for game_set, distribution in distributions.items():
         if game_set.startswith(game_set_name):
             return distribution
