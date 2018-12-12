@@ -77,7 +77,7 @@ class GameSet(Enum):
     PROMO = 0
 
     def get_arg_form(self):
-        return self.name.lower().replace('_', '')
+        return str(self.name).lower().replace('_', '')
 
 
 class CardCategory(Enum):
@@ -101,3 +101,28 @@ class BasicCard(Enum):
     CURSE = 6
     PLATINUM = 7
     COLONY = 8
+
+
+class CardType(Enum):
+    ACTION = 0
+    TREASURE = 1
+    VICTORY = 2
+    CURSE = 3
+    ATTACK = 4
+    DURATION = 5
+    REACTION = 6
+    CASTLE = 7
+    DOOM = 8
+    FATE = 9
+    GATHERING = 10
+    HEIRLOOM = 11
+    KNIGHT = 12
+    LOOTER = 13
+    NIGHT = 14
+    PRIZE = 15
+    RESERVE = 16
+    RUINS = 17
+    SHELTER = 18
+    SPIRIT = 19
+    TRAVELLER = 20
+    ZOMBIE = 21

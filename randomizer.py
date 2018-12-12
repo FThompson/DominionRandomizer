@@ -3,7 +3,7 @@ import json
 import random
 import numpy
 from collections import defaultdict
-from dtypes import BasicCard, Card, GameSet
+from dtypes import BasicCard, Card, GameSet, CardType
 
 
 def randomize():
@@ -16,6 +16,9 @@ def randomize():
     distribution_group.add_argument('-c', '--counts', nargs='+', type=int)
     parser.add_argument('-i', '--include', nargs='+', type=standardize_input)
     parser.add_argument('-x', '--exclude', nargs='+', type=standardize_input)
+    type_choices = [t.name.lower() for t in CardType]
+    type_choices.remove('curse')  # curse is not a type on any non-basic card
+    parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices)
     args = parser.parse_args()
     # TODO: refactor
     if 'base1e' in args.sets and 'base2e' in args.sets:
@@ -33,7 +36,8 @@ def randomize():
     with open('res/cards.json') as f:
         data = json.load(f)
         all_cards = [Card.from_json(**d) for d in data]
-        possible_cards = [c for c in all_cards if can_pick_card(c) and is_card_in_args(c, args.sets)]
+        possible_cards = [c for c in all_cards if can_pick_card(c) and is_card_in_args(c, args.sets) and
+                          not in_type_filter(c, args.filter_types)]
         cards = []
         # TODO: easy refactor
         if args.include:
@@ -130,6 +134,11 @@ def get_card_set_arg_form(card):
 
 def can_pick_card(card):
     return card.in_supply and card.name.lower() not in [c.name.lower() for c in BasicCard]
+
+
+def in_type_filter(card, types):
+    return any(t.lower() in types for t in card.types) if types else False
+
 
 if __name__ == '__main__':
     randomize()
