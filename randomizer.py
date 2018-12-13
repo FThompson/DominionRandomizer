@@ -11,6 +11,7 @@ def randomize():
     game_choices = [g.get_arg_form() for g in GameSet]
     game_choices.append('all')
     parser.add_argument('sets', nargs='+', choices=game_choices)
+    parser.add_argument('-n', '--number', type=int, default=10)
     distribution_group = parser.add_mutually_exclusive_group()
     distribution_group.add_argument('-w', '--weights', nargs='+', type=float)
     distribution_group.add_argument('-c', '--counts', nargs='+', type=int)
@@ -20,7 +21,7 @@ def randomize():
     type_choices.remove('curse')  # curse is not a type on any non-basic card
     parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices)
     args = parser.parse_args()
-    # TODO: refactor
+    # TODO: refactor into ArgumentParser subclass
     if 'base1e' in args.sets and 'base2e' in args.sets:
         parser.error('must choose only one of base1e, base2e')
     if 'intrigue1e' in args.sets and 'intrigue2e' in args.sets:
@@ -29,9 +30,9 @@ def randomize():
         parser.error('must have equal quantities of sets (%d) and weights (%d)' % (len(args.sets), len(args.weights)))
     if args.counts and len(args.sets) != len(args.counts):
         parser.error('must have equal quantities of sets (%d) and counts (%d)' % (len(args.sets), len(args.counts)))
-    if args.counts and sum(args.counts) != 10:
-        parser.error('counts must add up to 10')
-    if args.include and len(args.include) > 10:
+    if args.counts and sum(args.counts) != args.number:
+        parser.error('counts must add up to %d' % args.number)
+    if args.include and len(args.include) > args.number:
         parser.error('cannot have greater than ten cards defined via -i/--include')
     with open('res/cards.json') as f:
         data = json.load(f)
@@ -59,7 +60,7 @@ def randomize():
                         found = True
                 if not found:
                     parser.error('unable to find card specified via -x/--exclude: %s' % exclude)
-        count_to_pick = 10 - (len(args.include) if args.include else 0)
+        count_to_pick = args.number - (len(args.include) if args.include else 0)
         distribution = args.weights or args.counts
         if distribution:
             set_distributions = {args.sets[i]: distribution[i] for i in range(len(args.sets))}
