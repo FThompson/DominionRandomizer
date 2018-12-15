@@ -1,5 +1,7 @@
 import argparse
 import json
+import re
+import shutil
 import urllib.request
 from argparse import ArgumentParser
 from pathlib import Path
@@ -7,8 +9,7 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
-import re
-from dtypes import Card, Cost
+from dtypes import Card, Cost, GameSet
 
 
 class CardFetcher:
@@ -32,16 +33,16 @@ class CardFetcher:
             temp_path, headers = urllib.request.urlretrieve(image_url)
             if not filepath.parent.exists():
                 filepath.parent.mkdir()
-            Path(temp_path).rename(filepath)
+            shutil.move(temp_path, filepath)
 
     def parse_card_data(self, raw_card):
         raw = re.split(r'\D\|\|\D', raw_card)
         name, category = self.get_name_and_category(raw[0])
-        game_set, edition = self.get_game_set(raw[1])
+        game_set = self.get_game_set(raw[1])
         types = self.get_types(raw[2])
         cost = self.get_cost(raw[3])
         text = raw[4].strip()
-        return Card(name, category, types, game_set, edition, cost, text)
+        return Card(name, category, types, game_set, cost, text)
 
     def get_name_and_category(self, raw):
         m = re.match(r'\|\{\{(.*?)\|(.*?)\}\}', raw)
@@ -53,7 +54,8 @@ class CardFetcher:
         m = re.match(r'\[\[(.*?)\]\](, <abbr.+>([12]E)<)?', raw)
         game_set = m.group(1)
         edition = m.group(3)
-        return game_set, edition
+        name = game_set + (' ' + edition if edition else '')
+        return GameSet.for_name(name)
 
     def get_types(self, raw):
         return [x.strip() for x in raw.split('-')]
@@ -61,6 +63,13 @@ class CardFetcher:
     def get_cost(self, raw):
         raw_cost = raw.split('|', 1)[1].strip()
         return Cost.from_raw(raw_cost)
+
+
+class JSONBuiltinEncoder(json.JSONEncoder):
+    def default(self, obj):  # pylint: disable=E0202
+        if hasattr(obj, '__json__') and callable(getattr(obj, '__json__')):
+            return obj.__json__()
+        return json.JSONEncoder.default(self, obj)
 
 
 if __name__ == '__main__':
@@ -72,4 +81,4 @@ if __name__ == '__main__':
     for card in fetcher.cards:
         print(card)
     with open('res/cards.json', 'w') as f:
-        json.dump(fetcher.cards, f, default=lambda x: x.__dict__)
+        json.dump(fetcher.cards, f, cls=JSONBuiltinEncoder)

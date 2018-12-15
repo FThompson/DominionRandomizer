@@ -3,30 +3,32 @@ from enum import Enum
 
 
 class Card:
-    def __init__(self, name, category, types, game_set, edition, cost, text):
+    def __init__(self, name, category, types, game_set, cost, text):
         self.name = name
         self.category = category
         self.types = types
         self.game_set = game_set
-        self.edition = edition
         self.cost = cost
         self.text = text
         self.in_supply = self.category == 'Card' and 'This is not in the Supply' not in self.text
+        self.is_basic = self.name.lower() in [c.name.lower() for c in BasicCard]
         self.encoded_name = self.name.replace(' ', '_').replace("'", '%27')
 
     @classmethod
     def from_json(cls, **json):
         props = dict(json)
         props.pop('in_supply')
+        props.pop('is_basic')
         props.pop('encoded_name')
+        props['game_set'] = GameSet.for_name(props['game_set'])
         props['cost'] = Cost(**props['cost'])
         return cls(**props)
 
     def __str__(self):
-        set_name = self.game_set
-        if self.edition:
-            set_name += ' ' + self.edition
-        return '%s (%s), %s, (%s), %s' % (self.name, self.category, set_name, ', '.join(self.types), self.cost)
+        return '%s (%s), %s, (%s), %s' % (self.name, self.category, self.game_set, ', '.join(self.types), self.cost)
+
+    def __json__(self):
+        return self.__dict__
 
 
 class Cost:
@@ -57,27 +59,60 @@ class Cost:
         s += ', %dP, %dD)' % (self.potions, self.debt)
         return s
 
+    def __json__(self):
+        return self.__dict__
+
 
 class GameSet(Enum):
-    BASE_1E = 1
-    BASE_2E = 2
-    INTRIGUE_1E = 3
-    INTRIGUE_2E = 4
-    SEASIDE = 5
-    ALCHEMY = 6
-    PROSPERITY = 7
-    CORNUCOPIA = 8
-    HINTERLANDS = 9
-    DARK_AGES = 10
-    GUILDS = 11
-    ADVENTURES = 12
-    EMPIRES = 13
-    NOCTURNE = 14
-    RENAISSANCE = 15
-    PROMO = 0
+    BASE = 'Base', None, False
+    BASE_1E = 'Base', 1
+    BASE_2E = 'Base', 2
+    INTRIGUE = 'Intrigue', None, False
+    INTRIGUE_1E = 'Intrigue', 1
+    INTRIGUE_2E = 'Intrigue', 2
+    SEASIDE = 'Seaside'
+    ALCHEMY = 'Alchemy'
+    PROSPERITY = 'Prosperity'
+    CORNUCOPIA = 'Cornucopia'
+    HINTERLANDS = 'Hinterlands'
+    DARK_AGES = 'Dark Ages'
+    GUILDS = 'Guilds'
+    ADVENTURES = 'Adventures'
+    EMPIRES = 'Empires'
+    NOCTURNE = 'Nocturne'
+    RENAISSANCE = 'Renaissance'
+    PROMO = 'Promo', None, False
 
-    def get_arg_form(self):
-        return str(self.name).lower().replace('_', '')
+    def __init__(self, set_name, edition=None, complete=True):
+        self.set_name = set_name
+        self.full_set_name = set_name + ((' %dE' % edition) if edition else '')
+        self.complete = complete
+
+    def contains(self, card):
+        return self.full_set_name.startswith(card.game_set.full_set_name)
+
+    def as_arg(self):
+        return self.full_set_name.lower().replace(' ', '')
+
+    def __str__(self):
+        return self.set_name
+
+    def __json__(self):
+        return self.full_set_name
+
+    @classmethod
+    def for_arg(cls, arg):
+        for game_set in cls:
+            if game_set.as_arg() == arg:
+                return game_set
+        return None
+
+    @classmethod
+    def for_name(cls, name):
+        for game_set in cls:
+            if game_set.full_set_name == name:
+                return game_set
+        return None
 
 
 class CardCategory(Enum):
