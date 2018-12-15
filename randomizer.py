@@ -1,12 +1,14 @@
 import argparse
 import json
+import os
 import random
 from collections import defaultdict
-from dtypes import BasicCard, Card, GameSet, GameSet, CardType
+from dtypes import BasicCard, Card, GameSet, CardType
 
 
 class Randomizer():
-    def __init__(self, sets, number=10, weights=None, counts=None, include=None, exclude=None, filter_types=None):
+    def __init__(self, path, sets, number=10, weights=None, counts=None, include=None, exclude=None, filter_types=None):
+        self.path = path
         self.sets = [GameSet.for_arg(set_arg) for set_arg in sets]
         self.number = number
         self.weights = weights
@@ -54,7 +56,7 @@ class Randomizer():
         return random.sample(self.possible_cards[game_set], k=count)
 
     def load_cards(self):
-        with open('res/cards.json') as f:
+        with open(self.path) as f:
             data = json.load(f)
             self.all_cards = [Card.from_json(**d) for d in data]
             self.possible_cards = {}
@@ -123,9 +125,12 @@ class Randomizer():
 
 
 class RandomizerParser():
+    def __init__(self, data_path):
+        self.data_path = data_path
+
     def get_randomizer(self):
-        return Randomizer(self.args.sets, self.args.number, self.args.weights, self.args.counts, self.args.include,
-                          self.args.exclude, self.args.filter_types)
+        return Randomizer(self.data_path, self.args.sets, self.args.number, self.args.weights, self.args.counts,
+                          self.args.include, self.args.exclude, self.args.filter_types)
 
     def parse_args(self):
         self.parser = argparse.ArgumentParser()
@@ -171,7 +176,8 @@ class RandomizerParser():
 
 
 if __name__ == '__main__':
-    parser = RandomizerParser()
+    json_path = os.path.join(os.path.dirname(__file__), 'res/cards.json')
+    parser = RandomizerParser(json_path)
     parser.parse_args()
     randomizer = parser.get_randomizer()
     randomizer.randomize()

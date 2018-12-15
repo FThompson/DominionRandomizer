@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import re
 import shutil
 import urllib.request
@@ -80,5 +81,6 @@ if __name__ == '__main__':
     fetcher.fetch_cards(args.images)
     for card in fetcher.cards:
         print(card)
-    with open('res/cards.json', 'w') as f:
+    json_path = os.path.join(os.path.dirname(__file__), 'res/cards.json')
+    with open(json_path, 'w') as f:
         json.dump(fetcher.cards, f, cls=JSONBuiltinEncoder)
