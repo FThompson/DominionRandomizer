@@ -3,23 +3,25 @@ from enum import Enum
 
 
 class Card:
-    def __init__(self, name, category, types, game_set, cost, text):
+    def __init__(self, name, category, types, game_set, cost, text, special_can_pick=False):
         self.name = name
         self.category = category
         self.types = types
         self.game_set = game_set
         self.cost = cost
         self.text = text
-        self.in_supply = self.category == 'Card' and 'This is not in the Supply' not in self.text
-        self.is_basic = (self.name.lower() in [c.name.lower() for c in BasicCard] or
-                         'Ruins' in self.types or 'Shelter' in self.types or 'Knight' in self.types)
-        self.encoded_name = self.name.replace(' ', '_').replace("'", '%27')
+        self.in_supply = (self.category == 'Card' and 'This is not in the Supply' not in self.text and
+                          all(CardType.is_in_supply(t) for t in self.types))
+        self.is_basic = self.name.lower() in [c.name.lower() for c in BasicCard]
+        self.can_pick = special_can_pick or (self.in_supply and not self.is_basic)
+        self.encoded_name = self.name.replace(' ', '_').replace('/', '_').replace("'", '%27')
 
     @classmethod
     def from_json(cls, **json):
         props = dict(json)
         props.pop('in_supply')
         props.pop('is_basic')
+        props.pop('can_pick')
         props.pop('encoded_name')
         props['game_set'] = GameSet.for_name(props['game_set'])
         props['cost'] = Cost(**props['cost'])
@@ -115,6 +117,10 @@ class GameSet(Enum):
                 return game_set
         return None
 
+    @classmethod
+    def complete_sets(cls):
+        return [g for g in GameSet if g.complete]
+
 
 class CardCategory(Enum):
     CARD = 0
@@ -141,25 +147,50 @@ class BasicCard(Enum):
 
 
 class CardType(Enum):
-    ACTION = 0
-    TREASURE = 1
-    VICTORY = 2
-    CURSE = 3
-    ATTACK = 4
-    DURATION = 5
-    REACTION = 6
-    CASTLE = 7
-    DOOM = 8
-    FATE = 9
-    GATHERING = 10
-    HEIRLOOM = 11
-    KNIGHT = 12
-    LOOTER = 13
-    NIGHT = 14
-    PRIZE = 15
-    RESERVE = 16
-    RUINS = 17
-    SHELTER = 18
-    SPIRIT = 19
-    TRAVELLER = 20
-    ZOMBIE = 21
+    ACTION = 0, True
+    TREASURE = 1, True
+    VICTORY = 2, True
+    CURSE = 3, True
+    ATTACK = 4, True
+    DURATION = 5, True
+    REACTION = 6, True
+    CASTLE = 7, False
+    DOOM = 8, True
+    FATE = 9, True
+    GATHERING = 10, True
+    HEIRLOOM = 11, False
+    KNIGHT = 12, False
+    LOOTER = 13, True
+    NIGHT = 14, True
+    PRIZE = 15, False
+    RESERVE = 16, True
+    RUINS = 17, False
+    SHELTER = 18, False
+    SPIRIT = 19, False
+    TRAVELLER = 20, True
+    ZOMBIE = 21, False
+
+    def __init__(self, value, in_supply):
+        self.in_supply = in_supply
+
+    @classmethod
+    def is_in_supply(cls, card_type):
+        for t in CardType:
+            if t.name.lower() == card_type.lower():
+                return t.in_supply
+        return False
+
+
+class SpecialTypeCard(Enum):
+    KNIGHTS = Card('Knights', 'Card', ['Action', 'Attack', 'Knight'], GameSet.DARK_AGES, Cost(5), '', True)
+    CASTLES = Card('Castles', 'Card', ['Victory', 'Castle'], GameSet.EMPIRES, Cost(3), '', True)
+
+
+class SplitPileCard(Enum):
+    ENCAMPMENT_PLUNDER = Card('Encampment/Plunder', 'Card', ['Action'], GameSet.EMPIRES, Cost(2), '', True)
+    PATRICIAN_EMPORIUM = Card('Patrician/Emporium', 'Card', ['Action'], GameSet.EMPIRES, Cost(2), '', True)
+    SETTLERS_BUSTLING_VILLAGE = Card('Settlers/Bustling Village', 'Card', ['Action'], GameSet.EMPIRES, Cost(2), '',
+                                     True)
+    CATAPULT_ROCKS = Card('Catapult/Rocks', 'Card', ['Action', 'Attack'], GameSet.EMPIRES, Cost(3), '', True)
+    GLADIATOR_FORTUNE = Card('Gladiator/Fortune', 'Card', ['Action'], GameSet.EMPIRES, Cost(3), '', True)
+    SAUNA_AVANTO = Card('Sauna/Avanto', 'Card', ['Action'], GameSet.PROMO, Cost(4), '', True)

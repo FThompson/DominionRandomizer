@@ -1,18 +1,16 @@
 import argparse
 import json
 import os
-
-from isort.settings import default
-
 import random
 from collections import defaultdict
-from dtypes import BasicCard, Card, CardType, GameSet
+from dtypes import BasicCard, Card, CardType, GameSet, SpecialTypeCard, SplitPileCard
 
 
+# TODO: add support for randomizing Events
 class Randomizer():
     def __init__(self, path, sets, number=10, weights=None, counts=None, include=None, exclude=None, filter_types=None):
         self.path = path
-        self.sets = [GameSet.for_arg(set_arg) for set_arg in sets]
+        self.sets = GameSet.complete_sets() if 'all' in sets else [GameSet.for_arg(set_arg) for set_arg in sets]
         self.number = number
         self.weights = weights
         self.counts = counts
@@ -52,10 +50,9 @@ class Randomizer():
             counts = defaultdict(int)
             for set_pick in set_picks:
                 counts[set_pick] += 1
-        self.cards = {game_set: self.randomize_set(game_set, count) for game_set, count in counts.items()}
+        cards = {game_set: self.randomize_set(game_set, count) for game_set, count in counts.items()}
+        self.cards = defaultdict(list, cards)
         for card in self.included_cards:
-            if card.game_set not in self.cards:
-                self.cards[card.game_set] = []
             self.cards[card.game_set].append(card)
 
     def randomize_set(self, game_set, count):
@@ -69,6 +66,20 @@ class Randomizer():
                 # less efficient than building by card.game_set but done to handle editioned sets
                 self.possible_cards[game_set] = [c for c in self.all_cards
                                                  if game_set.contains(c) and self.is_possible_card(c)]
+            self.add_special_type_cards()
+            self.remove_split_pile_cards()
+
+    def add_special_type_cards(self):
+        for card in SpecialTypeCard:
+            if card.value.game_set in self.sets:
+                self.possible_cards[card.value.game_set].append(card.value)
+    
+    def remove_split_pile_cards(self):
+        for split_card in SplitPileCard:
+            if split_card.value.game_set in self.sets:
+                card_splits = split_card.value.name.split('/')
+                set_cards = self.possible_cards[split_card.value.game_set]
+                set_cards[:] = [card for card in set_cards if card.name not in card_splits]
 
     def add_inclusions(self):
         for card in self.get_name_filtered_cards(self.include, '-i/--include'):
@@ -118,11 +129,7 @@ class Randomizer():
         return cards
 
     def is_possible_card(self, card):
-        return Randomizer.can_pick_card(card) and not Randomizer.in_type_filter(card, self.filter_types)
-
-    @staticmethod
-    def can_pick_card(card):
-        return card.in_supply and not card.is_basic
+        return card.can_pick and not Randomizer.in_type_filter(card, self.filter_types)
 
     @staticmethod
     def in_type_filter(card, types):
@@ -139,7 +146,7 @@ class RandomizerParser():
 
     def parse_args(self):
         self.parser = argparse.ArgumentParser()
-        game_choices = [g.as_arg() for g in GameSet if g.complete]
+        game_choices = [g.as_arg() for g in GameSet.complete_sets()]
         game_choices.append('all')
         self.parser.add_argument('sets', nargs='+', choices=game_choices)
         self.parser.add_argument('-n', '--number', type=int, default=10)
@@ -148,8 +155,7 @@ class RandomizerParser():
         distribution_group.add_argument('-c', '--counts', nargs='+', type=int)
         self.parser.add_argument('-i', '--include', nargs='+', type=RandomizerParser.standardize_input)
         self.parser.add_argument('-x', '--exclude', nargs='+', type=RandomizerParser.standardize_input)
-        type_choices = [t.name.lower() for t in CardType]
-        type_choices.remove('curse')  # curse is not a type on any non-basic card
+        type_choices = [t.name.lower() for t in CardType if t.in_supply]
         self.parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices)
         self.args = self.parser.parse_args()
         self.check_args()

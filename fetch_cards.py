@@ -10,20 +10,19 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
-from dtypes import Card, Cost, GameSet
+from dtypes import Card, Cost, GameSet, SpecialTypeCard, SplitPileCard
 
 
 class CardFetcher:
-    def fetch_cards(self, fetch_images=False):
+    def fetch_cards(self):
         cards = []
         response = requests.get('http://wiki.dominionstrategy.com/index.php/List_of_cards?action=raw')
         raw_cards = response.content.decode('utf-8').split('\n|-\n')
         for raw_card in raw_cards[1:]:
             card = self.parse_card_data(raw_card)
-            if fetch_images:
-                self.fetch_card_image(card)
             cards.append(card)
         self.cards = cards
+        self.add_special_cards()
 
     def fetch_card_image(self, card):
         filepath = Path('res') / 'cards' / (card.encoded_name + '.jpg')
@@ -65,6 +64,10 @@ class CardFetcher:
         raw_cost = raw.split('|', 1)[1].strip()
         return Cost.from_raw(raw_cost)
 
+    def add_special_cards(self):
+        self.cards.extend([c.value for c in SpecialTypeCard])
+        self.cards.extend([c.value for c in SplitPileCard])
+
 
 class JSONBuiltinEncoder(json.JSONEncoder):
     def default(self, obj):  # pylint: disable=E0202
@@ -78,8 +81,10 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--images', action='store_true')
     args = parser.parse_args()
     fetcher = CardFetcher()
-    fetcher.fetch_cards(args.images)
+    fetcher.fetch_cards()
     for card in fetcher.cards:
+        if args.images:
+            fetcher.fetch_card_image(card)
         print(card)
     json_path = os.path.join(os.path.dirname(__file__), 'res/cards.json')
     with open(json_path, 'w') as f:
