@@ -11,7 +11,8 @@ class Card:
         self.cost = cost
         self.text = text
         self.in_supply = self.category == 'Card' and 'This is not in the Supply' not in self.text
-        self.is_basic = self.name.lower() in [c.name.lower() for c in BasicCard]
+        self.is_basic = (self.name.lower() in [c.name.lower() for c in BasicCard] or
+                         'Ruins' in self.types or 'Shelter' in self.types or 'Knight' in self.types)
         self.encoded_name = self.name.replace(' ', '_').replace("'", '%27')
 
     @classmethod
@@ -136,6 +137,7 @@ class BasicCard(Enum):
     CURSE = 6
     PLATINUM = 7
     COLONY = 8
+    POTION = 9
 
 
 class CardType(Enum):

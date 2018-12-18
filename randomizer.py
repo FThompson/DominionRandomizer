@@ -1,9 +1,12 @@
 import argparse
 import json
 import os
+
+from isort.settings import default
+
 import random
 from collections import defaultdict
-from dtypes import BasicCard, Card, GameSet, CardType
+from dtypes import BasicCard, Card, CardType, GameSet
 
 
 class Randomizer():
@@ -18,9 +21,10 @@ class Randomizer():
         self.filter_types = filter_types
         self.count = self.number - (len(self.include) if self.include else 0)
         self.mode = 'weighted' if self.weights else 'counted' if self.counts else 'normal'
-        self.load_cards()
-        self.cards = []
+        self.cards = {}
+        self.possible_cards = {}
         self.included_cards = []
+        self.load_cards()
         self.add_inclusions()
         self.add_exclusions()
 
@@ -40,7 +44,9 @@ class Randomizer():
             counts = {self.sets[i]: self.counts[i] for i in range(len(self.sets))}
         else:
             if self.mode == 'normal':
-                set_picks = random.choices(self.sets, k=self.count)
+                # weight set picks based on how many cards in each set
+                weights = [len(set_cards) for game_set, set_cards in self.possible_cards.items()]
+                set_picks = random.choices(self.sets, weights=weights, k=self.count)
             elif self.mode == 'weighted':
                 set_picks = random.choices(self.sets, weights=self.weights, k=self.count)
             counts = defaultdict(int)
@@ -59,7 +65,6 @@ class Randomizer():
         with open(self.path) as f:
             data = json.load(f)
             self.all_cards = [Card.from_json(**d) for d in data]
-            self.possible_cards = {}
             for game_set in self.sets:
                 # less efficient than building by card.game_set but done to handle editioned sets
                 self.possible_cards[game_set] = [c for c in self.all_cards
