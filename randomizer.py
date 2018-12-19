@@ -87,23 +87,12 @@ class Randomizer():
             self.remove_card_from_pool(card)
         if self.counts:
             self.adjust_counts()
-        if self.weights:
-            self.adjust_weights()
 
     def adjust_counts(self):
         for card in self.included_cards:
             for i in range(len(self.sets)):
                 if self.sets[i].contains(card):
                     self.counts[i] -= 1
-
-    # TODO: reconsider, is this necessary? included cards can make weighting irrelevant in randomization
-    def adjust_weights(self):
-        sum_weights = sum(self.weights)
-        mean_weight = sum_weights / self.number
-        for card in self.included_cards:
-            for i in range(len(self.sets)):
-                if self.sets[i].contains(card):
-                    self.weights[i] -= mean_weight
 
     def add_exclusions(self):
         for card in self.get_name_filtered_cards(self.exclude, '-x/--exclude'):
