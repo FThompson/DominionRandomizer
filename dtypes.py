@@ -19,10 +19,6 @@ class Card:
     @classmethod
     def from_json(cls, **json):
         props = dict(json)
-        props.pop('in_supply')
-        props.pop('is_basic')
-        props.pop('can_pick')
-        props.pop('encoded_name')
         props['game_set'] = GameSet.for_name(props['game_set'])
         props['cost'] = Cost(**props['cost'])
         return cls(**props)
@@ -31,7 +27,8 @@ class Card:
         return '%s (%s), %s, (%s), %s' % (self.name, self.category, self.game_set, ', '.join(self.types), self.cost)
 
     def __json__(self):
-        return self.__dict__
+        return {'name': self.name, 'category': self.category, 'types': self.types, 'game_set': self.game_set,
+                'cost': self.cost, 'text': self.text}
 
 
 class Cost:
@@ -105,6 +102,7 @@ class GameSet(Enum):
 
     @classmethod
     def for_arg(cls, arg):
+        arg = arg.lower().replace(' ', '')
         for game_set in cls:
             if game_set.as_arg() == arg:
                 return game_set
