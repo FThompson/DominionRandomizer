@@ -6,10 +6,10 @@ from collections import defaultdict
 from dtypes import BasicCard, Card, CardType, GameSet, SpecialTypeCard, SplitPileCard
 
 
-# TODO: add support for randomizing Events
 class Randomizer():
-    def __init__(self, path, sets, number=10, weights=None, counts=None, include=None, exclude=None, filter_types=None):
-        self.path = path
+    def __init__(self, data_path, sets, number=10, weights=None, counts=None, include=None, exclude=None,
+                 filter_types=None, n_events=0, n_landmarks=0):
+        self.data_path = data_path
         self.sets = GameSet.complete_sets() if 'all' in sets else [GameSet.for_arg(set_arg) for set_arg in sets]
         self.number = number
         self.weights = weights
@@ -17,11 +17,17 @@ class Randomizer():
         self.include = include
         self.exclude = exclude
         self.filter_types = filter_types
+        self.n_events = n_events
+        self.n_landmarks = n_landmarks
         self.count = self.number - (len(self.include) if self.include else 0)
         self.mode = 'weighted' if self.weights else 'counted' if self.counts else 'normal'
         self.cards = {}
         self.possible_cards = {}
         self.included_cards = []
+        self.events = []
+        self.landmarks = []
+        self.possible_events = []
+        self.possible_landmarks = []
         self.load_cards()
         self.add_inclusions()
         self.add_exclusions()
@@ -36,6 +42,17 @@ class Randomizer():
             cards[game_set].sort(key=lambda c: c.name)
             for card in cards[game_set]:
                 print('- %s (%s), %s' % (card.name, ', '.join(card.types), card.cost))
+        self.print_non_cards(self.events, 'Events', True)
+        self.print_non_cards(self.landmarks, 'Landmarks', False)
+
+    def print_non_cards(self, card_list, label, print_cost):
+        if len(card_list) > 0:
+            print(label)
+            for card in card_list:
+                if print_cost:
+                    print('- %s, %s, %s' % (card.name, card.game_set, card.cost))
+                else:
+                    print('- %s, %s' % (card.name, card.game_set))
 
     def randomize(self):
         if self.mode == 'counted':
@@ -54,26 +71,39 @@ class Randomizer():
         self.cards = defaultdict(list, cards)
         for card in self.included_cards:
             self.cards[card.game_set].append(card)
+        self.events = random.sample(self.possible_events, self.n_events)
+        self.landmarks = random.sample(self.possible_landmarks, self.n_landmarks)
 
     def randomize_set(self, game_set, count):
         return random.sample(self.possible_cards[game_set], k=count)
 
     def load_cards(self):
-        with open(self.path) as f:
+        with open(self.data_path) as f:
             data = json.load(f)
             self.all_cards = [Card.from_json(**d) for d in data]
-            for game_set in self.sets:
-                # less efficient than building by card.game_set but done to handle editioned sets
-                self.possible_cards[game_set] = [c for c in self.all_cards
-                                                 if game_set.contains(c) and self.is_possible_card(c)]
-            self.add_special_type_cards()
-            self.remove_split_pile_cards()
+        for game_set in self.sets:
+            # less efficient than building by card.game_set but done to handle editioned sets
+            self.possible_cards[game_set] = [c for c in self.all_cards
+                                             if game_set.contains(c) and self.is_possible_card(c)]
+        self.add_special_type_cards()
+        self.remove_split_pile_cards()
+        self.possible_events = self.get_non_cards('Event', self.n_events)
+        self.possible_landmarks = self.get_non_cards('Landmark', self.n_landmarks)
+
+    def get_non_cards(self, category, count):
+        card_list = [c for c in self.all_cards if c.category == category and self.any_set_contains(c)]
+        if count > len(card_list):
+            raise argparse.ArgumentTypeError('too few %ss available in given sets: requested %d' % (category, count))
+        return card_list
+
+    def any_set_contains(self, card):
+        return any(game_set.contains(card) for game_set in self.sets)
 
     def add_special_type_cards(self):
         for card in SpecialTypeCard:
             if card.value.game_set in self.sets:
                 self.possible_cards[card.value.game_set].append(card.value)
-    
+
     def remove_split_pile_cards(self):
         for split_card in SplitPileCard:
             if split_card.value.game_set in self.sets:
@@ -126,12 +156,10 @@ class Randomizer():
 
 
 class RandomizerParser():
-    def __init__(self, data_path):
-        self.data_path = data_path
-
-    def get_randomizer(self):
-        return Randomizer(self.data_path, self.args.sets, self.args.number, self.args.weights, self.args.counts,
-                          self.args.include, self.args.exclude, self.args.filter_types)
+    def get_randomizer(self, data_path):
+        return Randomizer(data_path, self.args.sets, self.args.number, self.args.weights, self.args.counts,
+                          self.args.include, self.args.exclude, self.args.filter_types, self.args.events,
+                          self.args.landmarks)
 
     def parse_args(self):
         self.parser = argparse.ArgumentParser()
@@ -146,6 +174,8 @@ class RandomizerParser():
         self.parser.add_argument('-x', '--exclude', nargs='+', type=RandomizerParser.standardize_input)
         type_choices = [t.name.lower() for t in CardType if t.in_supply]
         self.parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices)
+        self.parser.add_argument('-e', '--events', type=int, default=0)
+        self.parser.add_argument('-l', '--landmarks', type=int, default=0)
         self.args = self.parser.parse_args()
         self.check_args()
 
@@ -177,8 +207,8 @@ class RandomizerParser():
 
 if __name__ == '__main__':
     json_path = os.path.join(os.path.dirname(__file__), 'res/cards.json')
-    parser = RandomizerParser(json_path)
+    parser = RandomizerParser()
     parser.parse_args()
-    randomizer = parser.get_randomizer()
+    randomizer = parser.get_randomizer(json_path)
     randomizer.randomize()
     randomizer.print_cards()
