@@ -18,7 +18,7 @@ class CardFetcher:
         cards = []
         response = requests.get('http://wiki.dominionstrategy.com/index.php/List_of_cards?action=raw')
         raw_cards = response.content.decode('utf-8').split('\n|-\n')
-        for raw_card in raw_cards[1:]:
+        for raw_card in raw_cards[1:]:  # skip data header line
             card = self.parse_card_data(raw_card)
             cards.append(card)
         self.cards = cards
@@ -78,7 +78,7 @@ class JSONBuiltinEncoder(json.JSONEncoder):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--images', action='store_true')
+    parser.add_argument('-i', '--images', action='store_true', help='Fetch card images')
     args = parser.parse_args()
     fetcher = CardFetcher()
     fetcher.fetch_cards()

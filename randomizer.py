@@ -165,17 +165,23 @@ class RandomizerParser():
         self.parser = argparse.ArgumentParser()
         game_choices = [g.as_arg() for g in GameSet.complete_sets()]
         game_choices.append('all')
-        self.parser.add_argument('sets', nargs='+', choices=game_choices)
-        self.parser.add_argument('-n', '--number', type=int, default=10)
+        self.parser.add_argument('sets', nargs='+', choices=game_choices, help='Game sets to choose from, or all')
+        self.parser.add_argument('-n', '--number', type=int, default=10, help='Number of cards to pick, default 10')
         distribution_group = self.parser.add_mutually_exclusive_group()
-        distribution_group.add_argument('-w', '--weights', nargs='+', type=float)
-        distribution_group.add_argument('-c', '--counts', nargs='+', type=int)
-        self.parser.add_argument('-i', '--include', nargs='+', type=RandomizerParser.standardize_input)
-        self.parser.add_argument('-x', '--exclude', nargs='+', type=RandomizerParser.standardize_input)
+        distribution_group.add_argument('-w', '--weights', nargs='+', type=float,
+                                        help='Weights to be applied to each set when randomly picking cards')
+        distribution_group.add_argument('-c', '--counts', nargs='+', type=int,
+                                        help='Counts of cards to pick from each set')
+        self.parser.add_argument('-i', '--include', nargs='+', type=RandomizerParser.standardize_input,
+                                 help='Specific cards to include')
+        self.parser.add_argument('-x', '--exclude', nargs='+', type=RandomizerParser.standardize_input,
+                                 help='Specific cards to exclude')
         type_choices = [t.name.lower() for t in CardType if t.in_supply]
-        self.parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices)
-        self.parser.add_argument('-e', '--events', type=int, default=0)
-        self.parser.add_argument('-l', '--landmarks', type=int, default=0)
+        type_choices.remove('curse')  # curse type only present on basic curse card
+        self.parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices,
+                                 help='Specific cards types to filter out before randomly picking cards')
+        self.parser.add_argument('-e', '--events', type=int, default=0, help='Number of events to pick')
+        self.parser.add_argument('-l', '--landmarks', type=int, default=0, help='Number of landmarks to pick')
         self.args = self.parser.parse_args()
         self.check_args()
 
