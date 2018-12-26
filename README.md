@@ -50,7 +50,7 @@ If `all` is selected, cards from all game sets are included.
 
 `-n/--number NUMBER`
 
-Number of cards to pick, default 10.]
+Number of cards to pick, default 10.
 
 `-w/--weights [WEIGHTS ...]`
 
