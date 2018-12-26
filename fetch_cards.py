@@ -1,3 +1,9 @@
+"""
+This module contains CardFetcher, which can be called via command line to fetch cards, and card images if the
+-i/--images argument is present. Card data is saved into res/cards.json and card images are saved into res/cards/.
+
+"""
+
 import argparse
 import json
 import os
@@ -57,6 +63,7 @@ class CardFetcher:
     def parse_card_data(self, raw_card):
         """
         Parses a Card object from the given raw card data entry pulled from the Dominion Wiki.
+        Card text is left in Wiki format and should not be rendered directly.
         
         :param raw_card: The raw card data entry.
         :type raw_card: str

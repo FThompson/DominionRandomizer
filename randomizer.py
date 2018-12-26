@@ -1,3 +1,9 @@
+"""
+This module contains Randomizer, used to generate random Dominion supplies with various randomization options,
+and RandomizerParser, used to parse the Randomizer options from command line input.
+
+"""
+
 import argparse
 import json
 import os
