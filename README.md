@@ -48,7 +48,7 @@ Required. Specify the Dominion sets to randomize from. Possible options:
 
 If `all` is selected, cards from all game sets are included.
 
-### Optional Arguments ###
+#### Optional Arguments ####
 
 `-n/--number NUMBER`
 
