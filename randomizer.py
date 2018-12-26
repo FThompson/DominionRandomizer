@@ -7,6 +7,12 @@ from dtypes import BasicCard, Card, CardType, GameSet, SpecialTypeCard, SplitPil
 
 
 class Randomizer():
+    """
+    Randomizes Dominion cards from given sets and provides customization options including the number of cards, set
+    weights or counts, included and excluded cards, filtered card types, and drawing events or landmarks.
+    
+    """
+
     def __init__(self, data_path, sets, number=10, weights=None, counts=None, include=None, exclude=None,
                  filter_types=None, n_events=0, n_landmarks=0):
         """
