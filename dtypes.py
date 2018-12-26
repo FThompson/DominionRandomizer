@@ -135,18 +135,22 @@ class Cost:
 
     def __str__(self):
         """
-        Formats this cost like Cost(8C*, 0P, 0D).
+        Formats this cost like Cost(8C, 8D).
         
         :return: The formatted cost string.
         :rtype: str
         """
 
-        s = 'Cost('
-        s += '%dC' % self.coins
-        if self.has_exception:
-            s += '*'
-        s += ', %dP, %dD)' % (self.potions, self.debt)
-        return s
+        if all(x is 0 for x in [self.coins, self.potions, self.debt]):
+            return 'Cost(0)'
+        parts = []
+        if self.coins > 0 or self.has_exception:
+            parts.append(str(self.coins) + 'C' + ('*' if self.has_exception else ''))
+        if self.potions > 0:
+            parts.append(str(self.potions) + 'P')
+        if self.debt > 0:
+            parts.append(str(self.debt) + 'D')
+        return 'Cost(%s)' % ', '.join(parts)
 
     def __json__(self):
         """
