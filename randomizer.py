@@ -56,7 +56,6 @@ class Randomizer():
         self.filter_types = filter_types
         self.n_events = int(n_events)
         self.n_landmarks = int(n_landmarks)
-        print(self.__dict__)
         self.count = self.number - len(self.include)
         self.mode = 'weighted' if self.weights else 'counted' if self.counts else 'normal'
         self.cards = {}
