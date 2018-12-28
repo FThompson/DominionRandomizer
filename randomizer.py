@@ -48,14 +48,15 @@ class Randomizer():
 
         self.data_path = data_path
         self.sets = GameSet.complete_sets() if 'all' in sets else [GameSet.for_arg(set_arg) for set_arg in sets]
-        self.number = number
+        self.number = int(number)
         self.weights = weights
         self.counts = counts
         self.include = include
         self.exclude = exclude
         self.filter_types = filter_types
-        self.n_events = n_events
-        self.n_landmarks = n_landmarks
+        self.n_events = int(n_events)
+        self.n_landmarks = int(n_landmarks)
+        print(self.__dict__)
         self.count = self.number - len(self.include)
         self.mode = 'weighted' if self.weights else 'counted' if self.counts else 'normal'
         self.cards = {}
