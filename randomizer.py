@@ -19,30 +19,30 @@ class Randomizer():
     
     """
 
-    def __init__(self, data_path, sets, number=10, weights=None, counts=None, include=None, exclude=None,
-                 filter_types=None, n_events=0, n_landmarks=0):
+    def __init__(self, data_path, sets, number=10, weights=[], counts=[], include=[], exclude=[], filter_types=[],
+                 n_events=0, n_landmarks=0):
         """
         Creates a randomizer with given arguments.
         
-        :param data_path: The cards.json file path
+        :param data_path: The cards.json file path.
         :type data_path: str
-        :param sets: The names of the sets to randomize, optionally in argument form (i.e. base2e)
+        :param sets: The names of the sets to randomize, optionally in argument form (i.e. base2e).
         :type sets: List[str]
-        :param number: The total number of cards to pick, defaults to 10
+        :param number: The total number of cards to pick, defaults to 10.
         :type number: int, optional
-        :param weights: The weights to be applied to each set when randomly picking cards, defaults to None
+        :param weights: The weights to be applied to each set when randomly picking cards, defaults to an empty list.
         :type weights: List[int], optional
-        :param counts: The counts of cards to pick from each set, defaults to None
+        :param counts: The counts of cards to pick from each set, defaults to an empty list.
         :type counts: List[int], optional
-        :param include: The cards to include, optionally in argument form, defaults to None
+        :param include: The cards to include, optionally in argument form, defaults to an empty list.
         :type include: List[str], optional
-        :param exclude: The cards to exclude, optionally in argument form, defaults to None
+        :param exclude: The cards to exclude, optionally in argument form, defaults to an empty list.
         :type exclude: List[str], optional
-        :param filter_types: The card types to filter out before randomly picking cards, defaults to None
+        :param filter_types: The card types to filter out before randomly picking cards, defaults to an empty list.
         :type filter_types: List[str], optional
-        :param n_events: The number of events to pick, defaults to 0
+        :param n_events: The number of events to pick, defaults to 0.
         :type n_events: int, optional
-        :param n_landmarks: The number of landmarks to pick, defaults to 0
+        :param n_landmarks: The number of landmarks to pick, defaults to 0.
         :type n_landmarks: int, optional
         """
 
@@ -56,7 +56,7 @@ class Randomizer():
         self.filter_types = filter_types
         self.n_events = n_events
         self.n_landmarks = n_landmarks
-        self.count = self.number - (len(self.include) if self.include else 0)
+        self.count = self.number - len(self.include)
         self.mode = 'weighted' if self.weights else 'counted' if self.counts else 'normal'
         self.cards = {}
         self.possible_cards = {}
@@ -275,15 +275,14 @@ class Randomizer():
         """
 
         cards = []
-        if card_args:
-            for card_arg in card_args:
-                found = False
-                for card in self.all_cards:
-                    if card_arg == RandomizerParser.standardize_input(card.name):
-                        cards.append(card)
-                        found = True
-                if not found:
-                    raise argparse.ArgumentTypeError('unable to find card specified via %s: %s' % (arg_hint, card_arg))
+        for card_arg in card_args:
+            found = False
+            for card in self.all_cards:
+                if card_arg == RandomizerParser.standardize_input(card.name):
+                    cards.append(card)
+                    found = True
+            if not found:
+                raise argparse.ArgumentTypeError('unable to find card specified via %s: %s' % (arg_hint, card_arg))
         return cards
 
     def is_possible_card(self, card):
@@ -371,17 +370,17 @@ class RandomizerParser():
         self.parser.add_argument('sets', nargs='+', choices=game_choices, help='Game sets to choose from, or all')
         self.parser.add_argument('-n', '--number', type=int, default=10, help='Number of cards to pick, default 10')
         distribution_group = self.parser.add_mutually_exclusive_group()
-        distribution_group.add_argument('-w', '--weights', nargs='+', type=float,
+        distribution_group.add_argument('-w', '--weights', nargs='+', type=float, default=[],
                                         help='Weights to be applied to each set when randomly picking cards')
-        distribution_group.add_argument('-c', '--counts', nargs='+', type=int,
+        distribution_group.add_argument('-c', '--counts', nargs='+', type=int, default=[],
                                         help='Counts of cards to pick from each set')
-        self.parser.add_argument('-i', '--include', nargs='+', type=RandomizerParser.standardize_input,
+        self.parser.add_argument('-i', '--include', nargs='+', type=RandomizerParser.standardize_input, default=[],
                                  help='Specific cards to include')
-        self.parser.add_argument('-x', '--exclude', nargs='+', type=RandomizerParser.standardize_input,
+        self.parser.add_argument('-x', '--exclude', nargs='+', type=RandomizerParser.standardize_input, default=[],
                                  help='Specific cards to exclude')
         type_choices = [t.name.lower() for t in CardType if t.in_supply]
         type_choices.remove('curse')  # curse type only present on basic curse card
-        self.parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices,
+        self.parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices, default=[],
                                  help='Specific cards types to filter out before randomly picking cards')
         self.parser.add_argument('-e', '--events', type=int, default=0, help='Number of events to pick')
         self.parser.add_argument('-l', '--landmarks', type=int, default=0, help='Number of landmarks to pick')
@@ -402,7 +401,7 @@ class RandomizerParser():
         if first in self.args.sets and second in self.args.sets:
             self.parser.error('must choose only one of %s, %s' % (first, second))
 
-    def check_distribution_args(self, dist_arg):
+    def check_distribution_args(self, distribution_arg, error_hint):
         """
         Checks if the given distribution has the same number of entries as there are sets.
         Throws a parser error if not.
@@ -411,10 +410,11 @@ class RandomizerParser():
         :type dist_arg: str
         """
 
-        if dist_arg and len(self.args.sets) != len(dist_arg):
-            self.parser.error('must have equal quantities of sets (%d) and weights (%d)' %
-                              (len(self.args.sets), len(dist_arg)))
+        if distribution_arg and len(self.args.sets) != len(distribution_arg):
+            self.parser.error('must have equal quantities of sets (%d) and %s (%d)' %
+                              (len(self.args.sets), error_hint, len(distribution_arg)))
 
+    # TODO: move parameter validation into Randomizer
     def check_args(self):
         """
         Checks for conflicting editions, invalid distribution counts, and invalid inclusion counts.
@@ -422,8 +422,8 @@ class RandomizerParser():
 
         self.check_edition_args('base')
         self.check_edition_args('intrigue')
-        self.check_distribution_args(self.args.weights)
-        self.check_distribution_args(self.args.counts)
+        self.check_distribution_args(self.args.weights, 'weights')
+        self.check_distribution_args(self.args.counts, 'counts')
         if self.args.counts and sum(self.args.counts) != self.args.number:
             self.parser.error('counts must add up to %d' % self.args.number)
         if self.args.include and len(self.args.include) > self.args.number:
