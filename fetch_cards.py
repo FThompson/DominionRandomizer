@@ -16,6 +16,7 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
+from json_util import JSONUnderscoreEncoder
 from dtypes import Card, Cost, GameSet, SpecialTypeCard, SplitPileCard
 
 
@@ -146,25 +147,6 @@ class CardFetcher:
         self.cards.extend([c.value for c in SplitPileCard])
 
 
-class JSONBuiltinEncoder(json.JSONEncoder):
-    """
-    A custom JSON Encoder which uses objects' __json__ functions if present, otherwise uses the default encoder.
-    
-    """
-
-    def default(self, obj):  # pylint: disable=E0202
-        """
-        Overrides the standard JSONEncoder's default encoder to check for the callable __json__ attribute.
-        
-        :return: The JSON encoded object.
-        :rtype: str
-        """
-
-        if hasattr(obj, '__json__') and callable(getattr(obj, '__json__')):
-            return obj.__json__()
-        return json.JSONEncoder.default(self, obj)
-
-
 def main():
     """
     Runs the card fetcher and saves cards to res/cards.json.
@@ -183,7 +165,7 @@ def main():
         print(card)
     json_path = os.path.join(os.path.dirname(__file__), 'res/cards.json')
     with open(json_path, 'w') as f:
-        json.dump(fetcher.cards, f, cls=JSONBuiltinEncoder)
+        json.dump(fetcher.cards, f, cls=JSONUnderscoreEncoder)
         
 if __name__ == '__main__':
     main()

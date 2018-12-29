@@ -368,6 +368,9 @@ class CardType(Enum):
 
         self.in_supply = in_supply
 
+    def get_name(self):
+        return str(self.name)[0] + str(self.name)[1:].lower()
+
     @classmethod
     def is_in_supply(cls, card_type):
         """
