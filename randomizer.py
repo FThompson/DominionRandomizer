@@ -1,15 +1,12 @@
 """
-This module contains Randomizer, used to generate random Dominion supplies with various randomization options,
-and RandomizerParser, used to parse the Randomizer options from command line input.
+This module contains Randomizer, used to generate random Dominion kingdoms with various randomization options.
 
 """
 
-import argparse
 import json
-import os
 import random
 from collections import defaultdict
-from dtypes import BasicCard, Card, CardType, GameSet, SpecialTypeCard, SplitPileCard
+from dtypes import Card, GameSet, SpecialTypeCard, SplitPileCard
 
 
 class Randomizer():
@@ -66,8 +63,7 @@ class Randomizer():
         self.possible_events = []
         self.possible_landmarks = []
         self.load_cards()
-        self.add_inclusions()
-        self.add_exclusions()
+        self.validate_configuration()
 
     def print_cards(self):
         """
@@ -163,6 +159,8 @@ class Randomizer():
         self.remove_split_pile_cards()
         self.possible_events = self.get_non_cards('Event', self.n_events)
         self.possible_landmarks = self.get_non_cards('Landmark', self.n_landmarks)
+        self.add_inclusions()
+        self.add_exclusions()
 
     def get_non_cards(self, category, count):
         """
@@ -172,14 +170,14 @@ class Randomizer():
         :type category: str
         :param count: The desired count of cards. Used to throw an error if not possible to get this amount.
         :type count: int
-        :raises argparse.ArgumentTypeError: Throws an argparse error if fewer than the requested number of cards exist.
+        :raises ValueError: Throws an argparse error if fewer than the requested number of cards exist.
         :return: The list of possible cards of the given category.
         :rtype: List[Card]
         """
 
         card_list = [c for c in self.all_cards if c.category == category and self.any_set_contains(c)]
         if count > len(card_list):
-            raise argparse.ArgumentTypeError('too few %ss available in given sets: requested %d' % (category, count))
+            raise ValueError('too few %ss available in given sets: requested %d' % (category, count))
         return card_list
 
     def any_set_contains(self, card):
@@ -243,9 +241,13 @@ class Randomizer():
         """
         Removes the excluded cards from the possible card pool.
         
+        :raises ValueError
         """
 
         for card in self.get_name_filtered_cards(self.exclude, '-x/--exclude'):
+            print(card.name)
+            if card in self.included_cards:
+                raise ValueError('must not have "%s" specified for both inclusion and exclusion' % card.name)
             self.remove_card_from_pool(card)
 
     def remove_card_from_pool(self, card):
@@ -269,7 +271,7 @@ class Randomizer():
         :type card_args: List[str]
         :param arg_hint: The argument hint to include in the error if necessary.
         :type arg_hint: str
-        :raises argparse.ArgumentTypeError: Throws an error if the requested card could not be found.
+        :raises ValueError: Throws an error if the requested card could not be found.
         :return: The list of cards matching the card arguments.
         :rtype: List[Card]
         """
@@ -278,11 +280,11 @@ class Randomizer():
         for card_arg in card_args:
             found = False
             for card in self.all_cards:
-                if card_arg == RandomizerParser.standardize_input(card.name):
+                if card_arg == Randomizer.standardize_input(card.name):
                     cards.append(card)
                     found = True
             if not found:
-                raise argparse.ArgumentTypeError('unable to find card specified via %s: %s' % (arg_hint, card_arg))
+                raise ValueError('unable to find card specified via %s: %s' % (arg_hint, card_arg))
         return cards
 
     def is_possible_card(self, card):
@@ -296,6 +298,58 @@ class Randomizer():
         """
 
         return card.can_pick and not Randomizer.in_type_filter(card, self.filter_types)
+
+    def validate_configuration(self):
+        """
+        Checks that this randomizer has a valid configuration and raises a ValueError if not.
+        This function checks for the following conditions:
+        * Conflicting editioned sets (i.e. Base 1E and Base 2E)
+        * Conflicting counts of sets and distributions (weights/counts)
+        * Requested set counts not adding up to the requested number of cards
+        * Too many included cards.
+        
+        :raises ValueError: If any of the previous invalidating condition are met.
+        """
+
+        self.validate_editioned_sets(GameSet.BASE_1E, GameSet.BASE_2E)
+        self.validate_editioned_sets(GameSet.INTRIGUE_1E, GameSet.INTRIGUE_2E)
+        self.validate_distribution_lengths(self.weights, 'weights')
+        self.validate_distribution_lengths(self.counts, 'counts')
+        if self.counts and sum(self.counts) != self.number:
+            raise ValueError('counts must add up to %d' % self.number)
+        if len(self.include) > self.number:
+            raise ValueError('must not have more cards included (%d) than requested (%d)' %
+                             (len(self.include), self.number))
+
+    def validate_editioned_sets(self, set1, set2):
+        """
+        Checks if both of the given game sets exist in this randomizer.
+        Used to avoid conflicting editioned sets (Base1E/Base2E, Intrigue1E/Intrigue2E)
+        
+        :param set1: The first set to check for.
+        :type set1: GameSet
+        :param set2: The second set to check for.
+        :type set2: GameSet
+        :raises ValueError: If both sets exist in this randomizer.
+        """
+
+        if set1 in self.sets and set2 in self.sets:
+            raise ValueError('must choose only one of %s, %s' % (set1.full_set_name, set2.full_set_name))
+
+    def validate_distribution_lengths(self, distribution, error_hint):
+        """
+        Checks if the given distribution list matches this randomizer's game set count.
+        
+        :param distribution: The distribution to check.
+        :type distribution: List[int]
+        :param error_hint: The hint to include in the error message.
+        :type error_hint: str
+        :raises ValueError: If the quantities do not match.
+        """
+
+        if distribution and len(self.sets) != len(distribution):
+            raise ValueError('must have equal quantities of sets (%d) and %s (%d)' %
+                             (len(self.sets), error_hint, len(distribution)))
 
     @staticmethod
     def in_type_filter(card, types):
@@ -312,123 +366,6 @@ class Randomizer():
 
         return any(t.lower() in types for t in card.types) if types else False
 
-
-class RandomizerParser():
-    """
-    An argument parser that parses the following arguments and converts them into a Randomizer instance.
-
-    positional arguments:
-        {base1e,base2e,intrigue1e,intrigue2e,seaside,alchemy,prosperity,cornucopia,hinterlands,darkages,guilds,
-            adventures,empires,nocturne,renaissance,all}
-                                Game sets to choose from, or all
-
-    optional arguments:
-        -h, --help            show this help message and exit
-        -n NUMBER, --number NUMBER
-                                Number of cards to pick, default 10
-        -w WEIGHTS [WEIGHTS ...], --weights WEIGHTS [WEIGHTS ...]
-                                Weights to be applied to each set when randomly
-                                picking cards
-        -c COUNTS [COUNTS ...], --counts COUNTS [COUNTS ...]
-                                Counts of cards to pick from each set
-        -i INCLUDE [INCLUDE ...], --include INCLUDE [INCLUDE ...]
-                                Specific cards to include
-        -x EXCLUDE [EXCLUDE ...], --exclude EXCLUDE [EXCLUDE ...]
-                                Specific cards to exclude
-        -f {action,treasure,victory,attack,duration,reaction,doom,fate,gathering,looter,night,reserve,traveller}
-            [{TYPES} ...], --filter-types {TYPES} [{TYPES} ...]
-                                Specific cards types to filter out before randomly
-                                picking cards
-        -e EVENTS, --events EVENTS
-                                Number of events to pick
-        -l LANDMARKS, --landmarks LANDMARKS
-                                Number of landmarks to pick
-    """
-
-    def get_randomizer(self, data_path):
-        """
-        Construct a Randomizer instance from the parsed arguments and the given data path.
-        
-        :param data_path: The cards.json data path.
-        :type data_path: str
-        :return: A randomizer instance.
-        :rtype: Randomizer
-        """
-
-        return Randomizer(data_path, self.args.sets, self.args.number, self.args.weights, self.args.counts,
-                          self.args.include, self.args.exclude, self.args.filter_types, self.args.events,
-                          self.args.landmarks)
-
-    def parse_args(self):
-        """
-        Creates the argparse.ArgumentParser and parses and checks args.
-        """
-
-        self.parser = argparse.ArgumentParser()
-        game_choices = [g.as_arg() for g in GameSet.complete_sets()]
-        game_choices.append('all')
-        self.parser.add_argument('sets', nargs='+', choices=game_choices, help='Game sets to choose from, or all')
-        self.parser.add_argument('-n', '--number', type=int, default=10, help='Number of cards to pick, default 10')
-        distribution_group = self.parser.add_mutually_exclusive_group()
-        distribution_group.add_argument('-w', '--weights', nargs='+', type=float, default=[],
-                                        help='Weights to be applied to each set when randomly picking cards')
-        distribution_group.add_argument('-c', '--counts', nargs='+', type=int, default=[],
-                                        help='Counts of cards to pick from each set')
-        self.parser.add_argument('-i', '--include', nargs='+', type=RandomizerParser.standardize_input, default=[],
-                                 help='Specific cards to include')
-        self.parser.add_argument('-x', '--exclude', nargs='+', type=RandomizerParser.standardize_input, default=[],
-                                 help='Specific cards to exclude')
-        type_choices = [t.name.lower() for t in CardType if t.in_supply]
-        type_choices.remove('curse')  # curse type only present on basic curse card
-        self.parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices, default=[],
-                                 help='Specific cards types to filter out before randomly picking cards')
-        self.parser.add_argument('-e', '--events', type=int, default=0, help='Number of events to pick')
-        self.parser.add_argument('-l', '--landmarks', type=int, default=0, help='Number of landmarks to pick')
-        self.args = self.parser.parse_args()
-        self.check_args()
-
-    def check_edition_args(self, set_name):
-        """
-        Checks if the set args contain both editions of the given set name.
-        Throws a parser error if not.
-        
-        :param set_name: The set name to check for both editions.
-        :type set_name: str
-        """
-
-        first = set_name + '1e'
-        second = set_name + '2e'
-        if first in self.args.sets and second in self.args.sets:
-            self.parser.error('must choose only one of %s, %s' % (first, second))
-
-    def check_distribution_args(self, distribution_arg, error_hint):
-        """
-        Checks if the given distribution has the same number of entries as there are sets.
-        Throws a parser error if not.
-        
-        :param dist_arg: The distribution argument to check.
-        :type dist_arg: str
-        """
-
-        if distribution_arg and len(self.args.sets) != len(distribution_arg):
-            self.parser.error('must have equal quantities of sets (%d) and %s (%d)' %
-                              (len(self.args.sets), error_hint, len(distribution_arg)))
-
-    # TODO: move parameter validation into Randomizer
-    def check_args(self):
-        """
-        Checks for conflicting editions, invalid distribution counts, and invalid inclusion counts.
-        """
-
-        self.check_edition_args('base')
-        self.check_edition_args('intrigue')
-        self.check_distribution_args(self.args.weights, 'weights')
-        self.check_distribution_args(self.args.counts, 'counts')
-        if self.args.counts and sum(self.args.counts) != self.args.number:
-            self.parser.error('counts must add up to %d' % self.args.number)
-        if self.args.include and len(self.args.include) > self.args.number:
-            self.parser.error('cannot have greater than %d cards defined via -i/--include' % self.args.number)
-
     @staticmethod
     def standardize_input(string):
         """
@@ -441,19 +378,3 @@ class RandomizerParser():
         """
 
         return string.replace("'", '').replace(' ', '').lower()
-
-
-def main():
-    """
-    Parses randomizer args, creates a randomizer, and randomizes and prints cards.
-    """
-
-    json_path = os.path.join(os.path.dirname(__file__), 'res/cards.json')
-    parser = RandomizerParser()
-    parser.parse_args()
-    randomizer = parser.get_randomizer(json_path)
-    randomizer.randomize()
-    randomizer.print_cards()
-
-if __name__ == '__main__':
-    main()

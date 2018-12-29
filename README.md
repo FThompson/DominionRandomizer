@@ -1,10 +1,10 @@
 # Dominion Randomizer #
 
-This program automates the card randomizer process by picking 10 cards from the given sets, as this process can be cumbersome to do manually when shuffling randomizers from many game sets. Run with the desired game sets, or `all`, as parameters to `randomizer.py`.
+This program automates the card randomizer process by picking 10 cards from the given sets, as this process can be cumbersome to do manually when shuffling randomizers from many game sets. Run with the desired game sets, or `all`, as parameters to `randomize.py`.
 
 ## Example ##
 
-    python randomizer.py base1e intrigue2e seaside prosperity
+    python randomize.py base1e intrigue2e seaside prosperity
 
 ## Output ##
 
@@ -25,7 +25,7 @@ This program automates the card randomizer process by picking 10 cards from the 
 
 ## Configuration ##
 
-`python randomizer.py [SETS ...]`
+`python randomize.py [SETS ...]`
 
 Required. Specify the Dominion sets to randomize from. Possible options:
 
