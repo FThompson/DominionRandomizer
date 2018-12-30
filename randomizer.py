@@ -64,6 +64,8 @@ class Randomizer():
         self.possible_landmarks = []
         self.load_cards()
         self.validate_configuration()
+        if self.counts:
+            self.adjust_counts()
 
     def print_cards(self):
         """
@@ -223,8 +225,6 @@ class Randomizer():
         for card in self.get_name_filtered_cards(self.include, '-i/--include'):
             self.included_cards.append(card)
             self.remove_card_from_pool(card)
-        if self.counts:
-            self.adjust_counts()
 
     def adjust_counts(self):
         """
