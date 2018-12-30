@@ -71,10 +71,8 @@ class RandomizerParser():
                                         help='Weights to be applied to each set when randomly picking cards')
         distribution_group.add_argument('-c', '--counts', nargs='+', type=int, default=[],
                                         help='Counts of cards to pick from each set')
-        self.parser.add_argument('-i', '--include', nargs='+', type=Randomizer.standardize_input, default=[],
-                                 help='Specific cards to include')
-        self.parser.add_argument('-x', '--exclude', nargs='+', type=Randomizer.standardize_input, default=[],
-                                 help='Specific cards to exclude')
+        self.parser.add_argument('-i', '--include', nargs='+', default=[], help='Specific cards to include')
+        self.parser.add_argument('-x', '--exclude', nargs='+', default=[], help='Specific cards to exclude')
         type_choices = [t.name.lower() for t in CardType if t.in_supply]
         type_choices.remove('curse')  # curse type only present on basic curse card
         self.parser.add_argument('-f', '--filter-types', nargs='+', choices=type_choices, default=[],

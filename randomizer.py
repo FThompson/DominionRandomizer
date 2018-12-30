@@ -50,7 +50,7 @@ class Randomizer():
         self.counts = counts
         self.include = include
         self.exclude = exclude
-        self.filter_types = filter_types
+        self.filter_types = [t.lower() for t in filter_types]
         self.n_events = int(n_events)
         self.n_landmarks = int(n_landmarks)
         self.count = self.number - len(self.include)
@@ -279,6 +279,7 @@ class Randomizer():
         cards = []
         for card_arg in card_args:
             found = False
+            card_arg = Randomizer.standardize_input(card_arg)
             for card in self.all_cards:
                 if card_arg == Randomizer.standardize_input(card.name):
                     cards.append(card)
